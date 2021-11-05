@@ -76,7 +76,7 @@ import org.owasp.benchmarkutils.score.parsers.CheckmarxESReader;
 import org.owasp.benchmarkutils.score.parsers.CheckmarxIASTReader;
 import org.owasp.benchmarkutils.score.parsers.CheckmarxReader;
 import org.owasp.benchmarkutils.score.parsers.CodeQLReader;
-import org.owasp.benchmarkutils.score.parsers.ContrastReader;
+import org.owasp.benchmarkutils.score.parsers.ContrastAssessReader;
 import org.owasp.benchmarkutils.score.parsers.CoverityReader;
 import org.owasp.benchmarkutils.score.parsers.CrashtestReader;
 import org.owasp.benchmarkutils.score.parsers.FaastReader;
@@ -1170,7 +1170,7 @@ public class BenchmarkScore extends AbstractMojo {
             String line1 = getLine(fileToParse, 0);
             // line1 contains: Starting Contrast (for Java) or contrast:contrastAgent (for Node)
             if (line1 != null && line1.toLowerCase().contains(" contrast")) {
-                tr = new ContrastReader().parse(fileToParse);
+                tr = new ContrastAssessReader().parse(fileToParse);
             } else System.out.println("Error: No matching parser found for .log file: " + filename);
         } else if (filename.endsWith(".hcl")) {
             tr = new HCLReader().parse(fileToParse);

@@ -28,20 +28,20 @@ import org.owasp.benchmarkutils.score.BenchmarkScore;
 import org.owasp.benchmarkutils.score.TestCaseResult;
 import org.owasp.benchmarkutils.score.TestSuiteResults;
 
-public class ContrastReader extends Reader {
+public class ContrastAssessReader extends Reader {
 
     private static final String NODEFINDINGLINEINDICATOR = "contrast:rules:sinks - ";
     private static final String NODEAGENTVERSIONLINEINDICATOR = "contrast:contrast-init - agent v";
 
     public static void main(String[] args) throws Exception {
         File f = new File("results/Benchmark_1.2-Contrast.log");
-        ContrastReader cr = new ContrastReader();
+        ContrastAssessReader cr = new ContrastAssessReader();
         cr.parse(f);
     }
 
     public TestSuiteResults parse(File f) throws Exception {
         TestSuiteResults tr =
-                new TestSuiteResults("Contrast", true, TestSuiteResults.ToolType.IAST);
+                new TestSuiteResults("Contrast Assess", true, TestSuiteResults.ToolType.IAST);
 
         BufferedReader reader = new BufferedReader(new FileReader(f));
         // This use of repeat() allows test case IDs to be different lengths for different
