@@ -17,6 +17,8 @@
  */
 package org.owasp.benchmarkutils.score;
 
+import com.contrastsecurity.sarif.SarifSchema210;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -63,59 +65,7 @@ import org.json.JSONObject;
 import org.owasp.benchmarkutils.helpers.Categories;
 import org.owasp.benchmarkutils.helpers.Category;
 import org.owasp.benchmarkutils.helpers.Utils;
-import org.owasp.benchmarkutils.score.parsers.AcunetixReader;
-import org.owasp.benchmarkutils.score.parsers.AppScanDynamicReader;
-import org.owasp.benchmarkutils.score.parsers.AppScanDynamicReader2;
-import org.owasp.benchmarkutils.score.parsers.AppScanSourceReader;
-import org.owasp.benchmarkutils.score.parsers.AppScanSourceReader2;
-import org.owasp.benchmarkutils.score.parsers.ArachniReader;
-import org.owasp.benchmarkutils.score.parsers.BurpJsonReader;
-import org.owasp.benchmarkutils.score.parsers.BurpReader;
-import org.owasp.benchmarkutils.score.parsers.CASTAIPReader;
-import org.owasp.benchmarkutils.score.parsers.CheckmarxESReader;
-import org.owasp.benchmarkutils.score.parsers.CheckmarxIASTReader;
-import org.owasp.benchmarkutils.score.parsers.CheckmarxReader;
-import org.owasp.benchmarkutils.score.parsers.CodeQLReader;
-import org.owasp.benchmarkutils.score.parsers.ContrastReader;
-import org.owasp.benchmarkutils.score.parsers.CoverityReader;
-import org.owasp.benchmarkutils.score.parsers.CrashtestReader;
-import org.owasp.benchmarkutils.score.parsers.FaastReader;
-import org.owasp.benchmarkutils.score.parsers.FindbugsReader;
-import org.owasp.benchmarkutils.score.parsers.FortifyReader;
-import org.owasp.benchmarkutils.score.parsers.FusionLiteInsightReader;
-import org.owasp.benchmarkutils.score.parsers.HCLReader;
-import org.owasp.benchmarkutils.score.parsers.HdivReader;
-import org.owasp.benchmarkutils.score.parsers.HorusecReader;
-import org.owasp.benchmarkutils.score.parsers.InsiderReader;
-import org.owasp.benchmarkutils.score.parsers.JuliaReader;
-import org.owasp.benchmarkutils.score.parsers.KiuwanReader;
-import org.owasp.benchmarkutils.score.parsers.LGTMReader;
-import org.owasp.benchmarkutils.score.parsers.NJSScanReader;
-import org.owasp.benchmarkutils.score.parsers.NetsparkerReader;
-import org.owasp.benchmarkutils.score.parsers.NoisyCricketReader;
-import org.owasp.benchmarkutils.score.parsers.PMDReader;
-import org.owasp.benchmarkutils.score.parsers.ParasoftReader;
-import org.owasp.benchmarkutils.score.parsers.QualysWASReader;
-import org.owasp.benchmarkutils.score.parsers.Rapid7Reader;
-import org.owasp.benchmarkutils.score.parsers.Reader;
-import org.owasp.benchmarkutils.score.parsers.SeekerReader;
-import org.owasp.benchmarkutils.score.parsers.SemgrepReader;
-import org.owasp.benchmarkutils.score.parsers.ShiftLeftReader;
-import org.owasp.benchmarkutils.score.parsers.ShiftLeftScanReader;
-import org.owasp.benchmarkutils.score.parsers.SnappyTickReader;
-import org.owasp.benchmarkutils.score.parsers.SonarQubeJsonReader;
-import org.owasp.benchmarkutils.score.parsers.SonarQubeReader;
-import org.owasp.benchmarkutils.score.parsers.SourceMeterReader;
-import org.owasp.benchmarkutils.score.parsers.ThunderScanReader;
-import org.owasp.benchmarkutils.score.parsers.VeracodeReader;
-import org.owasp.benchmarkutils.score.parsers.VisualCodeGrepperReader;
-import org.owasp.benchmarkutils.score.parsers.W3AFReader;
-import org.owasp.benchmarkutils.score.parsers.WapitiJsonReader;
-import org.owasp.benchmarkutils.score.parsers.WapitiReader;
-import org.owasp.benchmarkutils.score.parsers.WebInspectReader;
-import org.owasp.benchmarkutils.score.parsers.XanitizerReader;
-import org.owasp.benchmarkutils.score.parsers.ZapJsonReader;
-import org.owasp.benchmarkutils.score.parsers.ZapReader;
+import org.owasp.benchmarkutils.score.parsers.*;
 import org.owasp.benchmarkutils.score.report.ScatterHome;
 import org.owasp.benchmarkutils.score.report.ScatterInterpretation;
 import org.owasp.benchmarkutils.score.report.ScatterVulns;
@@ -995,20 +945,24 @@ public class BenchmarkScore extends AbstractMojo {
                 } // end else
             }
         } else if (filename.endsWith(".sarif")) {
-            // CodeQL results and LGTM results both have the same extension .sarif
-            // But only the LGTM results have "semmle.sourceLanguage" as a key in ["run.properties"]
-
+            // sarif is a common file format that can be produced by multiple tools. The strategy to
+            // get the correct
+            // reader is to look at the toolname in the standard sarif location and make the best
+            // choice from that.
             try {
-                // So we simply try the LGTMReader first, and if that fails, we try CodeQL.
-                tr =
-                        new LGTMReader()
-                                .parse(fileToParse); // If "semmle.sourceLanguage" is available set
-                // the LGTMReader
+                String toolname = getToolNameFromSarif(fileToParse).toLowerCase();
+
+                if (toolname.contains("lgtm.com")) {
+                    tr = new LGTMReader().parse(fileToParse);
+                } else if (toolname.contains("codeql")) {
+                    tr = new CodeQLReader().parse(fileToParse);
+                } else if (toolname.contains("contrast scan")) {
+                    tr = new ContrastScanReader().parse(fileToParse);
+                } else {
+                    throw new RuntimeException("unsupported tool in sarif");
+                }
             } catch (JSONException e) {
-                tr =
-                        new CodeQLReader()
-                                .parse(fileToParse); // If "semmle.sourceLanguage" is not available
-                // set the CodeQLReader
+                throw new RuntimeException(e);
             }
         } else if (filename.endsWith(".threadfix")) {
             tr = new KiuwanReader().parse(fileToParse);
@@ -1170,7 +1124,7 @@ public class BenchmarkScore extends AbstractMojo {
             String line1 = getLine(fileToParse, 0);
             // line1 contains: Starting Contrast (for Java) or contrast:contrastAgent (for Node)
             if (line1 != null && line1.toLowerCase().contains(" contrast")) {
-                tr = new ContrastReader().parse(fileToParse);
+                tr = new ContrastAssessReader().parse(fileToParse);
             } else System.out.println("Error: No matching parser found for .log file: " + filename);
         } else if (filename.endsWith(".hcl")) {
             tr = new HCLReader().parse(fileToParse);
@@ -1198,6 +1152,12 @@ public class BenchmarkScore extends AbstractMojo {
         }
 
         return tr;
+    }
+
+    private static String getToolNameFromSarif(File f) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        SarifSchema210 sarif = objectMapper.readValue(f, SarifSchema210.class);
+        return sarif.getRuns().get(0).getTool().getDriver().getName();
     }
 
     /**
